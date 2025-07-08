@@ -36,17 +36,17 @@ def clone_repo(repo_url, clone_dir="cloned_repo"):
     subprocess.run(["git", "clone", repo_url, clone_dir], check=True)
     return clone_dir
 
-def run_syft(repo_path):
-    result_file = "sbom_syft.json"
-    subprocess.run(["syft", repo_path, "-o", "json", "--output", f"json={result_file}"], check=True)
-    with open(result_file) as f:
-        return json.load(f)
+# def run_syft(repo_path):
+#     result_file = "sbom_syft.json"
+#     subprocess.run(["syft", repo_path, "-o", "json", "--output", f"json={result_file}"], check=True)
+#     with open(result_file) as f:
+#         return json.load(f)
 
-def run_grype(repo_path):
-    result_file = "vulns_grype.json"
-    subprocess.run(["grype", repo_path, "-o", "json", "--output", f"json={result_file}"], check=True)
-    with open(result_file) as f:
-        return json.load(f)
+# def run_grype(repo_path):
+#     result_file = "vulns_grype.json"
+#     subprocess.run(["grype", repo_path, "-o", "json", "--output", f"json={result_file}"], check=True)
+#     with open(result_file) as f:
+#         return json.load(f)
 
 def extract_static_metadata(repo_path):
     metadata = {}
@@ -203,11 +203,15 @@ def analyze_multiple_repos_with_logs(repo_urls, log_fn):
             gh_meta = get_github_metadata(url)
             code = collect_full_repo_code_text(path)
 
-            log_fn("⚙️ Running Syft + Grype...")
-            syft = run_syft(path)
-            grype = run_grype(path)
-            dependencies = len(syft.get("artifacts", []))
-            vulnerabilities = len(grype.get("matches", []))
+            # log_fn("⚙️ Running Syft + Grype...")
+            # syft = run_syft(path)
+            # grype = run_grype(path)
+            # dependencies = len(syft.get("artifacts", []))
+            # vulnerabilities = len(grype.get("matches", []))
+
+            log_fn("⚠️ Skipping Syft + Grype (Streamlit Cloud)")
+            dependencies = "NF"
+            vulnerabilities = "NF"
 
             log_fn("🧠 Running LLM inference...")
             llm_features = llm_extract_features(
