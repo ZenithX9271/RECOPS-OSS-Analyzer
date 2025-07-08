@@ -15,8 +15,10 @@ from rag_utils import store_to_vector_index
 
 # === Load tokens securely ===
 load_dotenv()
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+# GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GITHUB_TOKEN = st.secrets['GITHUB_TOKEN]
+GROQ_API_KEY = st.secrets['GROQ_API_KEY]
 
 def handle_remove_readonly(func, path, exc_info):
     os.chmod(path, stat.S_IWRITE)
