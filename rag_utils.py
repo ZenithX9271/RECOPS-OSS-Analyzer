@@ -8,7 +8,12 @@ import json
 EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 VECTOR_DB_DIR = "vector_db"
 
-embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL_NAME)
+# embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL_NAME)
+
+from langchain_community.embeddings import HuggingFaceEmbeddings
+
+embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+
 
 # Create directory if needed
 if not os.path.exists(VECTOR_DB_DIR):
