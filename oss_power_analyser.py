@@ -15,7 +15,6 @@ from rag_utils import store_to_vector_index
 import streamlit as st
 
 def get_tokens():
-    import streamlit as st
     return st.secrets["GITHUB_TOKEN"], st.secrets["GROQ_API_KEY"]
 
 GITHUB_TOKEN, GROQ_API_KEY = get_tokens()
