@@ -1,6 +1,6 @@
-st.write("✅ App started successfully.")
 # === app.py ===
 import streamlit as st
+st.write("✅ App started successfully.")
 import os
 import json
 import pandas as pd
