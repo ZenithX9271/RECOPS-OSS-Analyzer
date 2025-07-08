@@ -1,28 +1,24 @@
-# Streamlit app UI
+# Core
 streamlit
-
-# GitHub API access
+pandas
+python-dotenv
 PyGithub
 
-# Environment variable loading
-python-dotenv
-
-# Data handling
-pandas
-
-# RAG & LLM support
+# Langchain & LLMs
 langchain
 langchain-community
 langchain-groq
 openai
+
+# Embeddings & vector index
 sentence-transformers
-
-# Vector indexing
-faiss-cpu
-
-# For embedding models
 transformers
 torch
+faiss-cpu
 
-# Optional but recommended
+# Needed for HuggingFaceEmbeddings
+accelerate
+huggingface-hub
+
+# Optional
 tqdm
