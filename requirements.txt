@@ -1,8 +1,28 @@
+# Streamlit app UI
 streamlit
+
+# GitHub API access
 PyGithub
+
+# Environment variable loading
 python-dotenv
+
+# Data handling
+pandas
+
+# RAG & LLM support
 langchain
 langchain-community
 langchain-groq
-pandas
 openai
+sentence-transformers
+
+# Vector indexing
+faiss-cpu
+
+# For embedding models
+transformers
+torch
+
+# Optional but recommended
+tqdm
