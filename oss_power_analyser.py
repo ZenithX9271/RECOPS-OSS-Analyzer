@@ -12,15 +12,20 @@ from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from datetime import datetime
 from rag_utils import store_to_vector_index
-import streamlit as st
+# import streamlit as st
 
+def get_tokens():
+    import streamlit as st
+    return st.secrets["GITHUB_TOKEN"], st.secrets["GROQ_API_KEY"]
+
+GITHUB_TOKEN, GROQ_API_KEY = get_tokens()
 
 # === Load tokens securely ===
 load_dotenv()
 # GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 # GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GITHUB_TOKEN = st.secrets['GITHUB_TOKEN']
-GROQ_API_KEY = st.secrets['GROQ_API_KEY']
+# GITHUB_TOKEN = st.secrets['GITHUB_TOKEN']
+# GROQ_API_KEY = st.secrets['GROQ_API_KEY']
 
 def handle_remove_readonly(func, path, exc_info):
     os.chmod(path, stat.S_IWRITE)
