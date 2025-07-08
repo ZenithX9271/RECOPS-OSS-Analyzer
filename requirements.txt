@@ -2,6 +2,7 @@ streamlit
 PyGithub
 python-dotenv
 langchain
+langchain-community
 langchain-groq
 pandas
 openai
