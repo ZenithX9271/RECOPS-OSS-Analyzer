@@ -1,3 +1,4 @@
+st.write("✅ App started successfully.")
 # === app.py ===
 import streamlit as st
 import os
