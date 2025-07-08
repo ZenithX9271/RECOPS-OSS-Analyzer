@@ -12,7 +12,7 @@ from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from datetime import datetime
 from rag_utils import store_to_vector_index
-# import streamlit as st
+import streamlit as st
 
 def get_tokens():
     import streamlit as st
