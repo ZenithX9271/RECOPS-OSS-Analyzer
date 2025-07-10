@@ -10,9 +10,19 @@ VECTOR_DB_DIR = "vector_db"
 
 # embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL_NAME)
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
+# from langchain_community.embeddings import HuggingFaceEmbeddings
 
-embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+# embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+
+import streamlit as st
+
+@st.cache_resource
+def load_embeddings():
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+
+embedding = load_embeddings()
+
 
 
 # Create directory if needed
