@@ -20,7 +20,9 @@ import streamlit as st
 def load_embeddings():
     try:
         from langchain_community.embeddings import HuggingFaceEmbeddings
-        return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+        # return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+        return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2", model_kwargs={"local_files_only": True})
+        
     except Exception as e:
         st.error(f"❌ Failed to load embeddings:\n{e}")
         raise e
