@@ -1,84 +1,70 @@
-# === rag_utils.py ===
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
-# from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+from langchain.llms import HuggingFaceHub
+import streamlit as st
 import os
-import json
 
-EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+# Embedding Model and Vector DB Path
+EMBED_MODEL_NAME = "sentence-transformers/paraphrase-MiniLM-L6-v2"
 VECTOR_DB_DIR = "vector_db"
 
-# embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL_NAME)
+# === Prompt & LLM Chain Setup ===
+prompt = PromptTemplate(
+    input_variables=["context", "q"],
+    template="Answer the question based on the context:\n\n{context}\n\nQuestion: {q}"
+)
+llm = HuggingFaceHub(repo_id="google/flan-t5-base")
+chain = LLMChain(llm=llm, prompt=prompt)
 
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-
-# embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
-
-import streamlit as st
-
+# === Load Embeddings ===
 @st.cache_resource
 def load_embeddings():
-    try:
-        from langchain_community.embeddings import HuggingFaceEmbeddings
-        # return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
-        return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2", model_kwargs={"local_files_only": True})
-        
-    except Exception as e:
-        st.error(f"❌ Failed to load embeddings:\n{e}")
-        raise e
+    return HuggingFaceEmbeddings(
+        model_name=EMBED_MODEL_NAME,
+        model_kwargs={"local_files_only": True}
+    )
 
+embedding = load_embeddings()
 
-# import streamlit as st
-
-# @st.cache_resource
-# def load_embeddings():
-#     from langchain_community.embeddings import HuggingFaceEmbeddings
-#     return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
-
-# embedding = load_embeddings()
-
-
-
-# Create directory if needed
+# === Initialize Vector Store ===
 if not os.path.exists(VECTOR_DB_DIR):
     os.makedirs(VECTOR_DB_DIR)
 
-# Lazy initialization: don't create index on empty data
 if os.path.exists(f"{VECTOR_DB_DIR}/index.faiss"):
     vectorstore = FAISS.load_local(VECTOR_DB_DIR, embeddings=embedding, index_name="oss")
 else:
-    vectorstore = None  # Will be created when we get the first document
+    vectorstore = None
 
 
+# === Store Project Metadata ===
 def store_to_vector_index(project_name, metadata_dict):
-    global vectorstore  # allow reassignment
+    global vectorstore
 
-    text_blocks = []
-    for key, val in metadata_dict.items():
-        if isinstance(val, str):
-            text_blocks.append(f"{key}: {val}")
-        elif isinstance(val, (int, float)):
-            text_blocks.append(f"{key}: {val}")
-    full_text = "\n".join(text_blocks)
-
+    full_text = "\n".join([f"{k}: {v}" for k, v in metadata_dict.items() if isinstance(v, (str, int, float))])
     doc = Document(page_content=full_text, metadata={"project": project_name})
 
     if vectorstore is None:
-        # First document – create new index
         vectorstore = FAISS.from_documents([doc], embedding)
     else:
-        # Add to existing index
         vectorstore.add_documents([doc])
 
     vectorstore.save_local(VECTOR_DB_DIR, index_name="oss")
 
 
+# === Query Vector Store ===
 def query_vector_index(question: str) -> str:
     try:
         if vectorstore is None:
             return "❌ Vector index is empty. Please analyze a repository first."
         results = vectorstore.similarity_search(question, k=1)
-        return results[0].page_content if results else "⚠️ Sorry, no relevant match found in analyzed data."
+        return results[0].page_content if results else "⚠️ No relevant match found."
     except Exception as e:
         return f"❌ Error during vector search: {str(e)}"
+
+
+# === Run Prompt Chain ===
+def run_chain(context_block, selected_question):
+    return chain.run({"context": context_block, "q": selected_question})
