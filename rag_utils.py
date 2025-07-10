@@ -18,10 +18,22 @@ import streamlit as st
 
 @st.cache_resource
 def load_embeddings():
-    from langchain_community.embeddings import HuggingFaceEmbeddings
-    return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+    try:
+        from langchain_community.embeddings import HuggingFaceEmbeddings
+        return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+    except Exception as e:
+        st.error(f"❌ Failed to load embeddings:\n{e}")
+        raise e
 
-embedding = load_embeddings()
+
+# import streamlit as st
+
+# @st.cache_resource
+# def load_embeddings():
+#     from langchain_community.embeddings import HuggingFaceEmbeddings
+#     return HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
+
+# embedding = load_embeddings()
 
 
 
