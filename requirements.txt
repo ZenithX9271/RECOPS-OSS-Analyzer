@@ -10,6 +10,14 @@ langchain-community
 langchain-groq
 openai
 
+langchain==0.1.16
+langchain_community
+langchain_groq
+sentence-transformers
+streamlit
+PyGithub
+
+
 # Embeddings & vector index
 sentence-transformers
 transformers
