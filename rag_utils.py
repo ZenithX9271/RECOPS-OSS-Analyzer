@@ -1,43 +1,59 @@
+# === FILE: rag_utils.py ===
 import os
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.document_loaders import TextLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.llms import Groq
-from langchain.chains import RetrievalQA
-from dotenv import load_dotenv
+import shutil
+import pickle
+from sentence_transformers import SentenceTransformer
+import faiss
 
-# Load environment variables
-load_dotenv()
+# === Configuration ===
+EMBED_MODEL_NAME = "paraphrase-MiniLM-L6-v2"
+VECTOR_DB_DIR = "vector_db"
+INDEX_FILE = os.path.join(VECTOR_DB_DIR, "faiss.index")
+METADATA_FILE = os.path.join(VECTOR_DB_DIR, "metadata.pkl")
 
-# === Load documents ===
-loader = TextLoader("sample.txt")
-documents = loader.load()
+# === Initialize model ===
+model = SentenceTransformer(EMBED_MODEL_NAME)
 
-# === Split documents ===
-text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-texts = text_splitter.split_documents(documents)
+# === Ensure directory ===
+if not os.path.exists(VECTOR_DB_DIR):
+    os.makedirs(VECTOR_DB_DIR)
 
-# === Load HF Embeddings ===
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+# === Load or initialize index and metadata ===
+if os.path.exists(INDEX_FILE) and os.path.exists(METADATA_FILE):
+    index = faiss.read_index(INDEX_FILE)
+    with open(METADATA_FILE, "rb") as f:
+        metadata = pickle.load(f)
+else:
+    index = None
+    metadata = []
 
-# === Create vector store ===
-vectorstore = FAISS.from_documents(texts, embeddings)
+# === Store project metadata into vector index ===
+def store_to_vector_index(project_name: str, metadata_dict: dict):
+    global index, metadata
+    # Prepare text content for embedding
+    content = "\n".join(f"{k}: {v}" for k, v in metadata_dict.items() if isinstance(v, (str, int, float)))
+    # Compute embedding
+    vec = model.encode([content])
+    # Initialize index if needed
+    if index is None:
+        dim = vec.shape[1]
+        index = faiss.IndexFlatL2(dim)
+    # Add to index and metadata list
+    index.add(vec)
+    metadata.append((project_name, content))
+    # Save index and metadata
+    faiss.write_index(index, INDEX_FILE)
+    with open(METADATA_FILE, "wb") as f:
+        pickle.dump(metadata, f)
 
-# === Set up Groq LLM ===
-llm = Groq(model="mixtral-8x7b-32768", api_key=os.getenv("GROQ_API_KEY"))
-
-# === Retrieval-based QA chain ===
-qa = RetrievalQA.from_chain_type(
-    llm=llm,
-    chain_type="stuff",
-    retriever=vectorstore.as_retriever()
-)
-
-# === Ask your question ===
-while True:
-    query = input("\nAsk a question (or type 'exit'): ")
-    if query.lower() == 'exit':
-        break
-    response = qa.run(query)
-    print(f"\nAnswer: {response}")
+# === Query vector store ===
+def query_vector_index(question: str) -> str:
+    if index is None or index.ntotal == 0:
+        return "❌ Vector index is empty. Please analyze a repository first."
+    # Embed question
+    qvec = model.encode([question])
+    # Search nearest neighbor
+    distances, indices = index.search(qvec, k=1)
+    idx = indices[0][0]
+    proj_name, content = metadata[idx]
+    return content
