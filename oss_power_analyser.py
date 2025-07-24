@@ -1,3 +1,4 @@
+# === FILE: oss_power_analyser.py ===
 import os
 import re
 import json
@@ -8,23 +9,26 @@ import pandas as pd
 from github import Github
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain.prompts import ChatPromptTemplate
 from datetime import datetime
 from rag_utils import store_to_vector_index
 
-load_dotenv()
+# Load environment variables
+dotenv_loaded = load_dotenv()
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 
 def handle_remove_readonly(func, path, exc_info):
     os.chmod(path, stat.S_IWRITE)
     func(path)
+
 
 def clone_repo(repo_url, clone_dir="cloned_repo"):
     if os.path.exists(clone_dir):
         shutil.rmtree(clone_dir, onerror=handle_remove_readonly)
     subprocess.run(["git", "clone", repo_url, clone_dir], check=True)
     return clone_dir
+
 
 def extract_static_metadata(repo_path):
     metadata = {}
@@ -48,6 +52,7 @@ def extract_static_metadata(repo_path):
     })
     return metadata
 
+
 def get_github_metadata(repo_url):
     g = Github(GITHUB_TOKEN)
     user_repo = "/".join(repo_url.split("/")[-2:]).replace(".git", "")
@@ -65,6 +70,7 @@ def get_github_metadata(repo_url):
         "License Type": repo.get_license().license.spdx_id if repo.license else "NF"
     }
 
+
 def collect_full_repo_code_text(repo_path):
     extensions = [".py", ".java", ".cpp", ".c", ".js", ".ts", ".html", ".css", ".rs", ".go", ".rb", ".json", ".xml"]
     code_chunks = []
@@ -78,76 +84,29 @@ def collect_full_repo_code_text(repo_path):
                     continue
     return "\n\n".join(code_chunks)
 
+
 def safe_json_parse(text):
     try:
         match = re.search(r"\{[\s\S]+\}", text)
         if match:
             return json.loads(match.group())
-    except Exception as e:
-        print("⚠️ JSON Parse Error:", e)
+    except Exception:
+        pass
     return {}
+
 
 def llm_extract_features(readme, license, module_count, dependencies, code):
     llm = ChatGroq(api_key=GROQ_API_KEY, model="llama3-8b-8192")
-
-    full_context = f"""
-README:
-{readme[:3000]}
-
-LICENSE: {license}
-Modules: {module_count}
-Dependencies: {dependencies}
-CODE:
-{code[:10000]}
-"""
-
-    prompt = ChatPromptTemplate.from_template("""
-From the given README, LICENSE, and CODE extract the following features if available (use "NF" if not found):
-- Scale
-- Time criticality
-- Software function
-- Simulation Accuracy
-- Real-Time Processing
-- Fault Tolerance Mechanism
-- Standards Interoperability
-- Platform Support
-- SCADA/EMS Presence
-- ROI for OSS
-- DER Type
-- Voltage Level
-- Node/Buses Count
-- Control Architecture
-- Redundancy
-- Cyber-Physical Integration
-- Resilience Strategy
-- Energy Not Supplied (ENS)
-- Licensing Savings
-- Maintenance Cost
-- TCO (Total Cost of Ownership)
-- Customer Diversity
-- Reusability Value
-- Simulation Tools
-- Real-Time Control Systems
-- Planning / Optimization Models
-- Energy Management Systems
-- Data Analytics & Forecasting Tools
-
-Respond in JSON format only.
-    """)
-
-    chain = prompt | llm
+    prompt_text = (
+        f"README:\n{readme[:3000]}\n\n"
+        f"LICENSE: {license}\nModules: {module_count}\nDependencies: {dependencies}\n"
+        f"CODE:\n{code[:10000]}\n"
+        "\nExtract features in JSON:"
+    )
     try:
-        response = chain.invoke({
-            "readme": readme,
-            "license": license,
-            "modules": module_count,
-            "deps": dependencies,
-            "code": code
-        })
-
-        parsed = safe_json_parse(response.content)
-
-        EXPECTED_KEYS = [
+        resp = llm.client.completions.create(prompt=prompt_text)
+        parsed = safe_json_parse(resp.choices[0].text)
+        for key in [
             "Scale", "Time criticality", "Software function", "Simulation Accuracy",
             "Real-Time Processing", "Fault Tolerance Mechanism", "Standards Interoperability",
             "Platform Support", "SCADA/EMS Presence", "ROI for OSS", "DER Type", "Voltage Level",
@@ -156,16 +115,12 @@ Respond in JSON format only.
             "TCO (Total Cost of Ownership)", "Customer Diversity", "Reusability Value", "Simulation Tools",
             "Real-Time Control Systems", "Planning / Optimization Models", "Energy Management Systems",
             "Data Analytics & Forecasting Tools"
-        ]
-
-        for key in EXPECTED_KEYS:
+        ]:
             parsed.setdefault(key, "NF")
-
         return parsed
+    except Exception:
+        return {k: "NF" for k in key}
 
-    except Exception as e:
-        print(f"🛑 Error in llm_extract_features: {e}")
-        return {k: "NF" for k in EXPECTED_KEYS}
 
 def analyze_multiple_repos_with_logs(repo_urls, log_fn):
     all_features = []
@@ -192,20 +147,12 @@ def analyze_multiple_repos_with_logs(repo_urls, log_fn):
                 code
             )
 
-            combined = {
-                **gh_meta,
-                "Title": "NF",
-                "Link": url,
-                "Creator": "NF",
-                "Creator specific": "NF",
-                **static_meta,
-                "dependency_count": dependencies,
-                "vulnerabilities": vulnerabilities,
-                **llm_features
-            }
+            combined = {**gh_meta, "Link": url, **static_meta,
+                        "dependency_count": dependencies, "vulnerabilities": vulnerabilities,
+                        **llm_features}
             all_features.append(combined)
             store_to_vector_index(combined["github repo"], combined)
             log_fn(f"✅ Done: `{url}`")
         except Exception as e:
-            log_fn(f"❌ Failed for `{url}`: {str(e)}")
+            log_fn(f"❌ Failed for `{url}`: {e}")
     return all_features
