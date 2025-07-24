@@ -5,8 +5,9 @@ python-dotenv
 PyGithub
 
 # === LangChain & LLMs ===
-langchain==0.1.16
-langchain-community
+langchain==0.1.17
+langchain-core==0.1.28
+langchain-community==0.0.34
 langchain-huggingface>=0.0.22
 langchain-groq
 openai
