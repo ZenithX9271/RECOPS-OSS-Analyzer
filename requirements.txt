@@ -1,24 +1,13 @@
-# === FILE: requirements.txt ===
-# Core
-tstreamlit
-pandas
+# Core Dependencies
+fastapi
+uvicorn[standard]
+pydantic
 python-dotenv
+pandas
+requests
 PyGithub
+streamlit
 
-# LLM & Embedding Dependencies
-langchain-groq
-openai
+# For embeddings
 sentence-transformers
-
-# Embeddings and vector store
-transformers
-torch
 faiss-cpu
-
-# HuggingFace utils
-accelerate
-huggingface-hub
-
-# Misc
-tqdm
-gunicorn
