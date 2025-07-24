@@ -1,8 +1,7 @@
-# === app.py ===
-import streamlit as st
-st.write("✅ App started successfully.")
+# === FILE: app.py ===
 import os
 import json
+import streamlit as st
 import pandas as pd
 from datetime import datetime
 from oss_power_analyser import analyze_multiple_repos_with_logs, save_all
@@ -43,10 +42,11 @@ st.markdown("""
 
 st.markdown('<div class="main-title">RECOPS: Resilience and Cost-benefits of Open Source Software in the Power Sector</div>', unsafe_allow_html=True)
 
+st.write("✅ App started successfully.")
+
 page = st.sidebar.radio("Navigate", ["Home", "Feature Analysis", "Ask LLM", "Past Analyses"])
 
-if "analysis_thread" not in st.session_state:
-    st.session_state.analysis_thread = None
+if "analysis_done" not in st.session_state:
     st.session_state.analysis_done = False
     st.session_state.analysis_result = []
 
@@ -63,7 +63,7 @@ if page == "Home":
 
 elif page == "Feature Analysis":
     st.markdown("<div class='section-title'>🔍 OSS Feature Analyzer</div>", unsafe_allow_html=True)
-    urls_input = st.text_area("Enter up to 200 GitHub Repository URLs (one per line)")
+    urls_input = st.text_area("Enter GitHub Repository URLs (one per line, max 200):")
     urls = [u.strip() for u in urls_input.strip().split("\n") if u.strip()][:200]
     log_container = st.empty()
 
@@ -74,16 +74,16 @@ elif page == "Feature Analysis":
             log_container.markdown("  \n".join(log_lines[-12:]))
 
         st.markdown('<div class="floating-spinner">⚙️ Analysing...</div>', unsafe_allow_html=True)
-        st.info("⏳ Analysis started. Please do not refresh or switch away until complete.")
+        st.info("⏳ Analysis started. Please wait...")
 
-        result = analyze_multiple_repos_with_logs(urls, log_fn)
-        st.session_state.analysis_result = result
+        results = analyze_multiple_repos_with_logs(urls, log_fn)
+        st.session_state.analysis_result = results
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         full_filename = f"features_output_{timestamp}"
         essential_filename = f"essential_features_{timestamp}"
 
-        save_all(result, full_filename, essential_filename)
+        save_all(results, full_filename, essential_filename)
         save_history_entry(full_filename)
 
         st.session_state.full_csv = f"{full_filename}.csv"
@@ -93,12 +93,10 @@ elif page == "Feature Analysis":
 
         st.session_state.analysis_done = True
 
-    if st.session_state.analysis_thread and st.session_state.analysis_thread.is_alive():
-        st.warning("🔄 Analysis in progress...")
-    elif st.session_state.analysis_done:
+    if st.session_state.analysis_done:
         st.success("✅ Analysis complete!")
         st.subheader("🔧 Extracted Features")
-        st.json(st.session_state.analysis_result)
+        st.dataframe(pd.DataFrame(st.session_state.analysis_result))
 
         st.download_button("📥 Download ESSENTIAL FEATURES (CSV)", open(st.session_state.ess_csv, "rb"), file_name=st.session_state.ess_csv)
         st.download_button("📥 Download ESSENTIAL FEATURES (JSON)", open(st.session_state.ess_json, "rb"), file_name=st.session_state.ess_json)
