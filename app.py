@@ -7,8 +7,6 @@ from datetime import datetime
 from oss_power_analyser import analyze_multiple_repos_with_logs, save_all
 from history_tracker import save_history_entry, get_past_runs
 from rag_utils import query_vector_index
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 
 st.set_page_config(page_title="RECOPS", layout="wide")
@@ -41,7 +39,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">RECOPS: Resilience and Cost-benefits of Open Source Software in the Power Sector</div>', unsafe_allow_html=True)
-
 st.write("✅ App started successfully.")
 
 page = st.sidebar.radio("Navigate", ["Home", "Feature Analysis", "Ask LLM", "Past Analyses"])
@@ -109,6 +106,7 @@ elif page == "Ask LLM":
     question = st.text_input("Enter your question (based on analyzed project code):")
     if question:
         with st.spinner("Thinking..."):
+            # direct query_vector_index already uses embeddings and LLM under the hood
             answer = query_vector_index(question)
         st.success("LLM Answer:")
         st.markdown(f"`{answer}`")
@@ -124,29 +122,18 @@ elif page == "Ask LLM":
     ]
     selected_question = st.selectbox("Pick a common question to evaluate:", sample_questions)
     if st.button("Run this insight"):
-        if "analysis_result" in st.session_state and st.session_state.analysis_result:
+        if st.session_state.analysis_result:
             try:
                 context_block = json.dumps(st.session_state.analysis_result[0])[:5000]
+                # Direct Groq call
                 llm = ChatGroq(api_key=os.getenv("GROQ_API_KEY"), model="llama3-8b-8192")
-                prompt = PromptTemplate(
-                    input_variables=["context", "q"],
-                    template="""
-Based on the OSS project metadata below, answer the following question:
-Context:
-{context}
-
-Question:
-{q}
-
-Answer:
-"""
-                )
-                chain = LLMChain(llm=llm, prompt=prompt)
-                result = chain.run({"context": context_block, "q": selected_question})
+                prompt = f"Context:\n{context_block}\n\nQuestion:\n{selected_question}\nAnswer:"
+                response = llm.client.completions.create(prompt=prompt)
+                answer_text = response.choices[0].text
                 st.success("Insight:")
-                st.write(result.strip())
+                st.write(answer_text)
             except Exception as e:
-                st.error(f"LLM processing failed: {str(e)}")
+                st.error(f"LLM processing failed: {e}")
         else:
             st.warning("❗ Please run feature analysis first from the sidebar.")
 
