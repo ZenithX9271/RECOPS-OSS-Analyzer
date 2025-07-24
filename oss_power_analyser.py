@@ -1,4 +1,3 @@
-# === oss_power_analyser.py ===
 import os
 import re
 import json
@@ -12,19 +11,10 @@ from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from datetime import datetime
 from rag_utils import store_to_vector_index
-import streamlit as st
 
-def get_tokens():
-    return st.secrets["GITHUB_TOKEN"], st.secrets["GROQ_API_KEY"]
-
-GITHUB_TOKEN, GROQ_API_KEY = get_tokens()
-
-# === Load tokens securely ===
 load_dotenv()
-# GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-# GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-# GITHUB_TOKEN = st.secrets['GITHUB_TOKEN']
-# GROQ_API_KEY = st.secrets['GROQ_API_KEY']
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 def handle_remove_readonly(func, path, exc_info):
     os.chmod(path, stat.S_IWRITE)
@@ -35,18 +25,6 @@ def clone_repo(repo_url, clone_dir="cloned_repo"):
         shutil.rmtree(clone_dir, onerror=handle_remove_readonly)
     subprocess.run(["git", "clone", repo_url, clone_dir], check=True)
     return clone_dir
-
-# def run_syft(repo_path):
-#     result_file = "sbom_syft.json"
-#     subprocess.run(["syft", repo_path, "-o", "json", "--output", f"json={result_file}"], check=True)
-#     with open(result_file) as f:
-#         return json.load(f)
-
-# def run_grype(repo_path):
-#     result_file = "vulns_grype.json"
-#     subprocess.run(["grype", repo_path, "-o", "json", "--output", f"json={result_file}"], check=True)
-#     with open(result_file) as f:
-#         return json.load(f)
 
 def extract_static_metadata(repo_path):
     metadata = {}
@@ -123,8 +101,7 @@ CODE:
 {code[:10000]}
 """
 
-    prompt = ChatPromptTemplate.from_template(
-        """
+    prompt = ChatPromptTemplate.from_template("""
 From the given README, LICENSE, and CODE extract the following features if available (use "NF" if not found):
 - Scale
 - Time criticality
@@ -156,8 +133,7 @@ From the given README, LICENSE, and CODE extract the following features if avail
 - Data Analytics & Forecasting Tools
 
 Respond in JSON format only.
-        """
-    )
+    """)
 
     chain = prompt | llm
     try:
@@ -203,13 +179,7 @@ def analyze_multiple_repos_with_logs(repo_urls, log_fn):
             gh_meta = get_github_metadata(url)
             code = collect_full_repo_code_text(path)
 
-            # log_fn("⚙️ Running Syft + Grype...")
-            # syft = run_syft(path)
-            # grype = run_grype(path)
-            # dependencies = len(syft.get("artifacts", []))
-            # vulnerabilities = len(grype.get("matches", []))
-
-            log_fn("⚠️ Skipping Syft + Grype (Streamlit Cloud)")
+            log_fn("⚠️ Skipping Syft + Grype")
             dependencies = "NF"
             vulnerabilities = "NF"
 
@@ -239,53 +209,3 @@ def analyze_multiple_repos_with_logs(repo_urls, log_fn):
         except Exception as e:
             log_fn(f"❌ Failed for `{url}`: {str(e)}")
     return all_features
-
-def save_all(features_list, full_filename="features_output", essential_filename="essential_features"):
-    ESSENTIAL_FEATURES = [
-        "Title", "Link", "github repo", "Creator", "Creator specific", "License Type", "Fork Count", "GitHub Stars/Forks",
-        "First update date", " last update", "Releases", "Active Contributors",
-        "Open/closed issues", "Detailed description", "Programming Language used", 
-        "has_contributing", "has_code_of_conduct", "has_tests", "module_count", "platforms", "README",
-        "dependency_count", "vulnerabilities", "Third-party Integrations", "Downloads / Installs Count", "User Community Size",
-        "DER Type", "Version Release Frequency", "Vendor Diversity", "SCADA/EMS Presence", "Data Analytics & Forecasting Tools",
-        "ROI for OSS", "Integration Cost", "Vendor Lock-in Avoidance", "Customer Diversity"
-    ]
-
-    FULL_FEATURE_LIST = list(set(ESSENTIAL_FEATURES + [
-        "Community Support", "Documentation Completeness", "Maintenance History",
-        "Dependency Freshness", "Code Modularity", "CI/CD Availability", "Issue Resolution Time",
-        "Code Review Coverage", "Test Coverage", "Commit Frequency Trend", "Bus Factor",
-        "Simulation Accuracy", "API Integration", "Real-Time Processing", "Platform Support",
-        "Hardware Interfacing", "Scalability", "Fault Tolerance Mechanism", "Validation Availability",
-        "Standards Interoperability", "Model Abstraction", "Extensibility / Plugin Support", "Resource Efficiency",
-        "Security Features", "Deployment Modes", "Containerization Support", "Real-World Use Cases",
-        "Institutional Backing", "Citations", "Educational Usage", "Benchmarks Participation",
-        "Language Localization", "Codebase Size", "Commercial Support Availability", "Social Media Mentions",
-        "Voltage Level", "Network Topology", "Control Architecture", "Redundancy",
-        "Node/Buses Count", "Cyber-Physical Integration", "Resilience Strategy",
-        "Fault Recovery Time", "MTBF (Mean Time Between Failures)",
-        "SAIDI/SAIFI", "Load Stability", "Voltage/Frequency Stability", "DER Hosting Capacity",
-        "Power Quality", "Islanding Accuracy", "Energy Not Supplied (ENS)", "Control Responsiveness",
-        "Licensing Savings", "Maintenance Cost", "TCO (Total Cost of Ownership)", "Downtime Cost",
-        "Reusability Value", "Training Cost", "Collaborative Cost Sharing",
-        "Simulation Tools", "Real-Time Control Systems", "Planning / Optimization Models",
-        "Energy Management Systems"
-    ]))
-
-    # Save full features
-    full_data = []
-    for project in features_list:
-        entry = {key: project.get(key, "NF") for key in FULL_FEATURE_LIST}
-        full_data.append(entry)
-    pd.DataFrame(full_data).to_csv(f"{full_filename}.csv", index=False)
-    with open(f"{full_filename}.json", "w") as f:
-        json.dump(full_data, f, indent=2)
-
-    # Save essential features
-    essential_data = []
-    for project in features_list:
-        entry = {key: project.get(key, "NF") for key in ESSENTIAL_FEATURES}
-        essential_data.append(entry)
-    pd.DataFrame(essential_data).to_csv(f"{essential_filename}.csv", index=False)
-    with open(f"{essential_filename}.json", "w") as f:
-        json.dump(essential_data, f, indent=2)
