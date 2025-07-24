@@ -4,12 +4,10 @@ import os
 HISTORY_DIR = "data"
 HISTORY_FILE = os.path.join(HISTORY_DIR, "analysis_history.txt")
 
-
 def ensure_history_dir():
     """Ensure the history directory exists (create if needed)."""
     if not os.path.exists(HISTORY_DIR):
         os.makedirs(HISTORY_DIR)
-
 
 def save_history_entry(filename):
     ensure_history_dir()
@@ -18,7 +16,6 @@ def save_history_entry(filename):
             f.write(filename + "\n")
     except Exception as e:
         print(f"[History Error] Could not write entry: {e}")
-
 
 def get_past_runs(max_entries=10):
     ensure_history_dir()
