@@ -3,8 +3,5 @@ services:
     name: oss-analyzer-streamlit
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "streamlit run streamlit_ui.py --server.port 10000 --server.enableCORS false"
-    envVars:
-      - key: PORT
-        value: 10000
+    startCommand: "streamlit run streamlit_ui.py --server.port=10000 --server.enableCORS=false"
     plan: free
