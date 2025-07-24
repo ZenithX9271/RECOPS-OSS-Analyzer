@@ -1,33 +1,28 @@
-# Core
+# === Core dependencies ===
 streamlit
 pandas
 python-dotenv
 PyGithub
 
-# Langchain & LLMs
-langchain
+# === LangChain & LLMs ===
+langchain==0.1.16
 langchain-community
 langchain-huggingface>=0.0.22
 langchain-groq
 openai
-
-langchain==0.1.16
-langchain_community
-langchain_groq
 sentence-transformers
-streamlit
-PyGithub
 
-
-# Embeddings & vector index
-sentence-transformers
+# === Embedding & Vector Store ===
 transformers
 torch
 faiss-cpu
 
-# Needed for HuggingFaceEmbeddings
+# === HuggingFace utilities ===
 accelerate
 huggingface-hub
 
-# Optional
+# === Utilities ===
 tqdm
+
+# === Render (for web deployment) ===
+gunicorn
