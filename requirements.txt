@@ -1,14 +1,11 @@
+# === FILE: requirements.txt ===
 # Core
-streamlit
+tstreamlit
 pandas
 python-dotenv
 PyGithub
 
-# LangChain ecosystem - safe range
-langchain>=0.1.16,<0.2.0
-langchain-core>=0.1.42,<0.2.0
-langchain-community>=0.0.36,<0.1.0
-langchain-huggingface>=0.0.22,<0.1.0
+# LLM & Embedding Dependencies
 langchain-groq
 openai
 sentence-transformers
