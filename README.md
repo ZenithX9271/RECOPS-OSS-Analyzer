@@ -33,6 +33,9 @@ This covers:
 
 4. Click Start Analysis to begin feature extraction.
 
+<img width="1854" height="928" alt="image" src="https://github.com/user-attachments/assets/659db05c-905d-4d21-9dc7-3719e6b7c6c6" />
+
+
 ## Project Structure
 RECOPS-OSS-Analyzer/
 │-- recops_app.py          # Main Streamlit app
