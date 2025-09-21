@@ -68,7 +68,7 @@ chain = LLMChain(llm=llm, prompt=prompt)
 def load_embeddings():
     return HuggingFaceEmbeddings(
         model_name=EMBED_MODEL_NAME,
-        model_kwargs={"local_files_only": True}
+        # model_kwargs={"local_files_only": True}
     )
 
 embedding = load_embeddings()
@@ -114,7 +114,7 @@ def run_chain(context_block, selected_question):
 # load_dotenv()
 # GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 # GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GITHUB_TOKEN = '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'
+GITHUB_TOKEN = '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'
 GROQ_API_KEY = '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'
 
 
