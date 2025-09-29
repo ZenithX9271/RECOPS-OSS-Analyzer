@@ -1,13 +1,12 @@
-# Core Dependencies
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-pandas
-requests
-PyGithub
 streamlit
-
-# For embeddings
+pandas
+python-dotenv
 sentence-transformers
 faiss-cpu
+pygithub
+langchain
+langchain-community
+huggingface_hub
+qdrant-client
+torch
+langchain-groq
