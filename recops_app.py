@@ -64,14 +64,14 @@ llm = HuggingFaceHub(repo_id="google/flan-t5-base", huggingfacehub_api_token='hf
 chain = LLMChain(llm=llm, prompt=prompt)
 
 # === Load Embeddings ===
-@st.cache_resource
-def load_embeddings():
-    return HuggingFaceEmbeddings(
-        model_name=EMBED_MODEL_NAME,
-        # model_kwargs={"local_files_only": True}
-    )
+# @st.cache_resource
+# def load_embeddings():
+#     return HuggingFaceEmbeddings(
+#         model_name=EMBED_MODEL_NAME,
+#         # model_kwargs={"local_files_only": True}
+#     )
 
-embedding = load_embeddings()
+# embedding = load_embeddings()
 
 # === Initialize Vector Store ===
 if not os.path.exists(VECTOR_DB_DIR):
