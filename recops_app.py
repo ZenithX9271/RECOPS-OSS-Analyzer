@@ -115,7 +115,8 @@ def run_chain(context_block, selected_question):
 # GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 # GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GITHUB_TOKEN = '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'
-GROQ_API_KEY = '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'
+GROQ_API_KEY = 'xai-AQluiJN8n4xW6zw0racIjrm4r6gyF5cBCPgT8vkvI1BJUQsZ2shtpLxkuRMkmAnkLWtxswYC9sJckbDs'
+# GROQ_API_KEY = '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'
 
 
 def handle_remove_readonly(func, path, exc_info):
