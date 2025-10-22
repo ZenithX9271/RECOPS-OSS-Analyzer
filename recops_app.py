@@ -114,7 +114,8 @@ def run_chain(context_block, selected_question):
 # load_dotenv()
 # GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 # GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GITHUB_TOKEN = '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'
+GITHUB_TOKEN = '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' # (Expires on 21st Nov 2025)
+# GITHUB_TOKEN = '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' (expired on 22 Oct 2025)
 # GROQ_API_KEY = 'xai-AQluiJN8n4xW6zw0racIjrm4r6gyF5cBCPgT8vkvI1BJUQsZ2shtpLxkuRMkmAnkLWtxswYC9sJckbDs'
 GROQ_API_KEY = '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'
 
