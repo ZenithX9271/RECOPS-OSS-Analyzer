@@ -20,6 +20,7 @@ from langchain.llms import HuggingFaceHub
 
 # Load environment variables
 # load_dotenv()
+st.set_page_config(page_title="RECOPS", layout="wide")
 
 # --- Content from history_tracker.py ---
 HISTORY_DIR = "data"
