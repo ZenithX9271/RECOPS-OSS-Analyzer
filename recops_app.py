@@ -378,7 +378,7 @@ def save_all(features_list, full_filename="features_output", essential_filename=
 # --- Content from app.py (Main Streamlit App) ---
 st.write("✅ App started successfully.")
 
-st.set_page_config(page_title="RECOPS", layout="wide")
+# st.set_page_config(page_title="RECOPS", layout="wide")
 
 st.markdown("""
     <style>
