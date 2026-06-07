@@ -1,0 +1,14 @@
+# Core
+streamlit>=1.42         # required for st.login() / st.user
+Authlib>=1.3.2          # OIDC backend used by st.login()
+pandas>=2.0
+requests>=2.31
+PyYAML>=6.0
+openpyxl>=3.1
+
+# LLM (optional features: summary + chat panel)
+langchain-groq>=0.1
+langchain-core>=0.2
+
+# Host requirement: a working `git` binary on PATH (already present on
+# Streamlit Community Cloud).
