@@ -1,28 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RECOPS Scorecard Extractor (Streamlit Cloud + Auth)
-====================================================
+RECOPS Scorecard Extractor (Streamlit Cloud + simple password gate)
+====================================================================
 
 Scores power-system open-source repositories on the six RECOPS families /
-27 sub-indicators, with an interactive LLM panel and email-allowlisted login.
+27 sub-indicators, with an interactive LLM panel.
+
+Access is protected by a single shared username + password defined in this
+file. After signing in, the rest of the app is identical to the local
+version. API keys are read from Streamlit secrets / environment variables
+and are hidden from the UI so users cannot read them out of the sidebar.
 
 DEPLOY (Streamlit Community Cloud)
 ----------------------------------
 1. Push this file plus the six recops_repo_scores_*.py modules and
    requirements.txt to a GitHub repo.
 2. On https://share.streamlit.io connect the repo and deploy.
-3. In App settings -> Secrets, paste the contents of
-   .streamlit/secrets.toml.example (filled in with your real values).
-4. Share the URL. Anyone who opens it is forced to sign in with Google;
-   only emails listed in `allowed_emails` get through.
+3. In App settings -> Secrets, set ONLY the two API keys:
 
-LOCAL DEVELOPMENT
------------------
-If no [auth] block is present in .streamlit/secrets.toml the login gate is
-skipped automatically so you can keep iterating without OAuth setup.
+       GITHUB_TOKEN  = "ghp_..."
+       GROQ_API_KEY  = "gsk_..."
 
-Credentials resolution order:  environment variable  ->  st.secrets  ->  sidebar.
+4. Share the URL. Visitors must enter the username and password below to
+   reach the app.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ import sys
 import io
 import re
 import json
+import hmac
 import shutil
 import stat
 import tempfile
@@ -44,8 +46,18 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+# =========================================================================== #
+#                  SHARED ACCESS CREDENTIALS  (fixed, in-file)                #
+#   Anyone who reads app.py can read these values. If you ever push the repo  #
+#   to a public URL, treat the password as known to the world and rely on it  #
+#   only as a polite gate, not real security.                                 #
+# =========================================================================== #
+APP_USERNAME = "recops_oss"
+APP_PASSWORD = "KTH@recops2527"
+
+
 # --------------------------------------------------------------------------- #
-# Credentials -- read from env var first, then st.secrets, then sidebar.       #
+# API credentials -- read from env var first, then st.secrets.                 #
 # Streamlit Cloud exposes secrets as both, so this works in either context.   #
 # --------------------------------------------------------------------------- #
 def _from_secrets(key: str) -> str:
@@ -610,97 +622,58 @@ def process_single_repo(repo_url: str,
 
 
 # =========================================================================== #
-#                          AUTHENTICATION  GATE                               #
+#                       SIMPLE USERNAME + PASSWORD GATE                       #
 # =========================================================================== #
-def _get_allowed_emails() -> List[str]:
-    """Read allowed emails from secrets.
-    Accepts a TOML list:   allowed_emails = ["a@x.com", "b@y.edu"]
-    or a CSV string:        allowed_emails = "a@x.com, b@y.edu"
-    Domain wildcards work:  "*@university.edu" lets anyone from that domain in.
-    Empty / missing => everyone who signs in is allowed (use with care).
-    """
-    try:
-        import streamlit as st
-        raw = st.secrets.get("allowed_emails", "")
-    except Exception:
-        return []
-    if isinstance(raw, list):
-        return [str(x).strip().lower() for x in raw if str(x).strip()]
-    if isinstance(raw, str):
-        return [x.strip().lower() for x in raw.split(",") if x.strip()]
-    return []
+def _check_credentials(u: str, p: str) -> bool:
+    """Constant-time comparison so we don't leak match length via timing."""
+    return (hmac.compare_digest(u or "", APP_USERNAME)
+            and hmac.compare_digest(p or "", APP_PASSWORD))
 
 
-def _email_allowed(email: str, allowed: List[str]) -> bool:
-    email = (email or "").lower()
-    if not allowed:
-        return True  # no list configured => allow all signed-in users
-    for pat in allowed:
-        if pat.startswith("*@") and email.endswith(pat[1:]):
-            return True
-        if email == pat:
-            return True
-    return False
-
-
-def _is_deployed_mode() -> bool:
-    """True when [auth] is configured -- i.e. this is a real deployment."""
-    try:
-        import streamlit as st
-        return "auth" in st.secrets
-    except Exception:
-        return False
-
-
-def _auth_gate() -> None:
-    """Enforce login + allowlist when [auth] is configured. No-op locally."""
+def _password_gate() -> None:
+    """Block the app until the user submits the correct username + password."""
     import streamlit as st
+    ss = st.session_state
 
-    if not _is_deployed_mode():
-        return  # local dev: no auth required
+    if ss.get("authenticated"):
+        return  # already signed in this session
 
-    if not hasattr(st, "user") or not hasattr(st, "login"):
-        st.error("Authentication is configured but your Streamlit version is too "
-                 "old for st.login(). Upgrade to streamlit >= 1.42.")
-        st.stop()
+    # Render a small, centred login form.
+    st.markdown("# RECOPS Scorecard Extractor")
+    st.markdown("This application is private. Please sign in to continue.")
+    st.write("")
 
-    if not st.user.is_logged_in:
-        st.markdown("# RECOPS Scorecard Extractor")
-        st.markdown("This application is private. Please sign in to continue.")
-        st.write("")
-        if st.button("Sign in with Google", type="primary"):
-            st.login()
-        st.stop()
+    with st.form("login_form", clear_on_submit=False):
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        submitted = st.form_submit_button("Sign in", type="primary")
 
-    allowed = _get_allowed_emails()
-    email = (getattr(st.user, "email", "") or "").lower()
-    if not _email_allowed(email, allowed):
-        st.error(f"Access denied for {email}. Ask the app owner to add your "
-                 "email to the allowlist.")
-        if st.button("Sign out"):
-            st.logout()
-        st.stop()
+    if submitted:
+        if _check_credentials(username, password):
+            ss["authenticated"] = True
+            ss["username"] = username
+            # Wipe the typed password from session_state for hygiene.
+            ss.pop("login_password", None)
+            st.rerun()
+        else:
+            st.error("Invalid username or password.")
+
+    st.stop()
 
 
 def _render_user_pill() -> None:
-    """Show the signed-in user's identity + sign-out button in the sidebar."""
+    """Show the signed-in user + a Sign-out button in the sidebar."""
     import streamlit as st
-    if not _is_deployed_mode():
-        return
-    if not hasattr(st, "user") or not st.user.is_logged_in:
+    if not st.session_state.get("authenticated"):
         return
     with st.sidebar:
         st.divider()
-        cols = st.columns([1, 3])
-        pic = getattr(st.user, "picture", None)
-        if pic:
-            cols[0].image(pic, width=42)
-        name = getattr(st.user, "name", None) or st.user.email
-        cols[1].markdown(
-            f"**{name}**  \n<span style='color:#94a3b8;font-size:0.85em'>{st.user.email}</span>",
-            unsafe_allow_html=True)
+        st.caption(
+            f"Signed in as **{st.session_state.get('username', 'user')}**")
         if st.button("Sign out", use_container_width=True):
-            st.logout()
+            for k in ("authenticated", "username", "login_username", "login_password"):
+                st.session_state.pop(k, None)
+            st.rerun()
 
 
 # =========================================================================== #
@@ -774,23 +747,8 @@ def _run_streamlit() -> None:
 
     st.set_page_config(page_title="RECOPS Scorecard Extractor", layout="wide")
 
-    # ---- DIAGNOSTIC: hit ?diag=1 to see what Streamlit loaded.
-    # Remove this block once OAuth is working. It bypasses the auth gate. ----
-    if st.query_params.get("diag") == "1":
-        auth = dict(st.secrets.get("auth", {}))
-        st.json({
-            "has_auth_block": "auth" in st.secrets,
-            "auth_keys_present": sorted(auth.keys()),
-            "redirect_uri": auth.get("redirect_uri"),
-            "redirect_uri_length": len(auth.get("redirect_uri", "")),
-            "cookie_secret_length": len(auth.get("cookie_secret", "")),
-            "client_id_suffix": (auth.get("client_id") or "")[-30:],
-            "server_metadata_url": auth.get("server_metadata_url"),
-        })
-        st.stop()
-
-    # ---- AUTH FIRST: nothing renders until the user is allowed in ----
-    _auth_gate()
+    # ---- GATE FIRST: nothing renders until the user signs in ----
+    _password_gate()
 
     st.markdown("""
         <style>
@@ -832,32 +790,32 @@ def _run_streamlit() -> None:
                 st.write(f"- {f}: {e}")
 
     # ----------------------------- Sidebar ------------------------------ #
-    deployed = _is_deployed_mode()
     secret_token = resolve_github_token()
     secret_groq = resolve_groq_key()
 
     with st.sidebar:
         st.header("Configuration")
 
-        # In deployed mode hide the API keys so allowlisted users can't read
-        # them out of the sidebar. Locally show prefilled inputs as before.
-        if deployed:
+        # If a secret is configured, use it silently and hide the input.
+        # Otherwise show an editable field for local development.
+        if secret_token:
             github_token = secret_token
-            groq_key = secret_groq
-            st.caption("GitHub token: " + ("configured from secrets." if secret_token
-                                           else "not configured (anonymous mode)."))
-            st.caption("Groq key: " + ("configured from secrets." if secret_groq
-                                       else "not configured (LLM features off)."))
+            st.caption("GitHub token: configured from secrets.")
         else:
-            github_token = st.text_input("GitHub Token", value=secret_token,
-                                         type="password",
-                                         help="Local dev: env var GITHUB_TOKEN or sidebar.")
+            github_token = st.text_input(
+                "GitHub Token", value="", type="password",
+                help="Set GITHUB_TOKEN as an env var or in st.secrets.")
             if st.button("Test GitHub token", use_container_width=True):
                 ok, msg = github_token_status(github_token)
                 (st.success if ok else st.warning)(msg)
-            groq_key = st.text_input("Groq API Key (optional)", value=secret_groq,
-                                     type="password",
-                                     help="Local dev: env var GROQ_API_KEY or sidebar.")
+
+        if secret_groq:
+            groq_key = secret_groq
+            st.caption("Groq key: configured from secrets.")
+        else:
+            groq_key = st.text_input(
+                "Groq API Key (optional)", value="", type="password",
+                help="Set GROQ_API_KEY as an env var or in st.secrets.")
             if st.button("Test Groq key", use_container_width=True):
                 ok, msg = groq_key_ok(groq_key, ss.model)
                 (st.success if ok else st.error)(msg)
@@ -874,11 +832,8 @@ def _run_streamlit() -> None:
         workers = st.slider("Parallel repositories", 1, 8, 3)
         want_narrative = st.checkbox("Add per-repo LLM summary (needs Groq key)",
                                      value=True)
-        if not deployed:
-            st.caption("Running in local mode (no auth). Configure [auth] in "
-                       "secrets.toml and deploy to enable the login gate.")
 
-    # Signed-in user pill (only in deployed mode)
+    # Signed-in user pill (bottom of sidebar)
     _render_user_pill()
 
     if not chosen_families:
@@ -1096,5 +1051,5 @@ if __name__ == "__main__":
     else:
         print(__doc__)
         print("\nNo URLs given. Examples:")
-        print("  streamlit run recops_app.py")
-        print("  python recops_app.py https://github.com/PyPSA/PyPSA")
+        print("  streamlit run app.py")
+        print("  python app.py https://github.com/PyPSA/PyPSA")
