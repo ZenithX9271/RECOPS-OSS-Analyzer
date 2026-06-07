@@ -25,6 +25,20 @@ skipped automatically so you can keep iterating without OAuth setup.
 Credentials resolution order:  environment variable  ->  st.secrets  ->  sidebar.
 """
 
+import streamlit as st
+if st.query_params.get("diag") == "1":
+    auth = dict(st.secrets.get("auth", {}))
+    st.json({
+        "has_auth_block": "auth" in st.secrets,
+        "auth_keys_present": sorted(auth.keys()),
+        "redirect_uri": auth.get("redirect_uri"),
+        "redirect_uri_length": len(auth.get("redirect_uri", "")),
+        "cookie_secret_length": len(auth.get("cookie_secret", "")),
+        "client_id_suffix": (auth.get("client_id") or "")[-30:],
+        "server_metadata_url": auth.get("server_metadata_url"),
+    })
+    st.stop()
+
 from __future__ import annotations
 
 import os
