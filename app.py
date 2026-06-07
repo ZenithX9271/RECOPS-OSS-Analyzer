@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RECOPS Scorecard Extractor (Streamlit Cloud + simple password gate)
-====================================================================
+RECOPS Scorecard Extractor (Streamlit Cloud, open access)
+==========================================================
 
 Scores power-system open-source repositories on the six RECOPS families /
 27 sub-indicators, with an interactive LLM panel.
 
-Access is protected by a single shared username + password defined in this
-file. After signing in, the rest of the app is identical to the local
-version. API keys are read from Streamlit secrets / environment variables
-and are hidden from the UI so users cannot read them out of the sidebar.
+This deployment is OPEN: anyone with the URL reaches the app directly,
+no sign-in required. API keys are read from Streamlit secrets /
+environment variables and are hidden from the UI so visitors cannot read
+them out of the sidebar.
 
 DEPLOY (Streamlit Community Cloud)
 ----------------------------------
@@ -22,8 +22,7 @@ DEPLOY (Streamlit Community Cloud)
        GITHUB_TOKEN  = "ghp_..."
        GROQ_API_KEY  = "gsk_..."
 
-4. Share the URL. Visitors must enter the username and password below to
-   reach the app.
+4. Share the URL. Visitors land directly on the scoring interface.
 """
 
 from __future__ import annotations
@@ -33,7 +32,6 @@ import sys
 import io
 import re
 import json
-import hmac
 import shutil
 import stat
 import tempfile
@@ -45,15 +43,6 @@ import concurrent.futures
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
-
-# =========================================================================== #
-#                  SHARED ACCESS CREDENTIALS  (fixed, in-file)                #
-#   Anyone who reads app.py can read these values. If you ever push the repo  #
-#   to a public URL, treat the password as known to the world and rely on it  #
-#   only as a polite gate, not real security.                                 #
-# =========================================================================== #
-APP_USERNAME = "recops_oss"
-APP_PASSWORD = "KTH@recops2527"
 
 
 # --------------------------------------------------------------------------- #
@@ -622,61 +611,6 @@ def process_single_repo(repo_url: str,
 
 
 # =========================================================================== #
-#                       SIMPLE USERNAME + PASSWORD GATE                       #
-# =========================================================================== #
-def _check_credentials(u: str, p: str) -> bool:
-    """Constant-time comparison so we don't leak match length via timing."""
-    return (hmac.compare_digest(u or "", APP_USERNAME)
-            and hmac.compare_digest(p or "", APP_PASSWORD))
-
-
-def _password_gate() -> None:
-    """Block the app until the user submits the correct username + password."""
-    import streamlit as st
-    ss = st.session_state
-
-    if ss.get("authenticated"):
-        return  # already signed in this session
-
-    # Render a small, centred login form.
-    st.markdown("# RECOPS Scorecard Extractor")
-    st.markdown("This application is private. Please sign in to continue.")
-    st.write("")
-
-    with st.form("login_form", clear_on_submit=False):
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
-        submitted = st.form_submit_button("Sign in", type="primary")
-
-    if submitted:
-        if _check_credentials(username, password):
-            ss["authenticated"] = True
-            ss["username"] = username
-            # Wipe the typed password from session_state for hygiene.
-            ss.pop("login_password", None)
-            st.rerun()
-        else:
-            st.error("Invalid username or password.")
-
-    st.stop()
-
-
-def _render_user_pill() -> None:
-    """Show the signed-in user + a Sign-out button in the sidebar."""
-    import streamlit as st
-    if not st.session_state.get("authenticated"):
-        return
-    with st.sidebar:
-        st.divider()
-        st.caption(
-            f"Signed in as **{st.session_state.get('username', 'user')}**")
-        if st.button("Sign out", use_container_width=True):
-            for k in ("authenticated", "username", "login_username", "login_password"):
-                st.session_state.pop(k, None)
-            st.rerun()
-
-
-# =========================================================================== #
 #                              CLI  ENTRYPOINT                                #
 # =========================================================================== #
 def _run_cli(argv: List[str]) -> int:
@@ -746,9 +680,6 @@ def _run_streamlit() -> None:
     import pandas as pd
 
     st.set_page_config(page_title="RECOPS Scorecard Extractor", layout="wide")
-
-    # ---- GATE FIRST: nothing renders until the user signs in ----
-    _password_gate()
 
     st.markdown("""
         <style>
@@ -832,9 +763,6 @@ def _run_streamlit() -> None:
         workers = st.slider("Parallel repositories", 1, 8, 3)
         want_narrative = st.checkbox("Add per-repo LLM summary (needs Groq key)",
                                      value=True)
-
-    # Signed-in user pill (bottom of sidebar)
-    _render_user_pill()
 
     if not chosen_families:
         st.warning("Select at least one family in the sidebar.")
